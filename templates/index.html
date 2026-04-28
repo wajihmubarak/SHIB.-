@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHIB PROFIT | Pro UI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* --- كل الـ CSS القديم بتاعك مكانه هنا (ما غيرت فيه شي عشان التصميم ما يخرب) --- */
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+        :root{ --gold:#f3ba2f; --bg:#070A12; --card:rgba(255,255,255,0.05); --stroke:rgba(255,255,255,0.08); --text:#fff; }
+        *{ margin:0; padding:0; font-family:'Cairo',sans-serif; box-sizing:border-box; }
+        body{ background: radial-gradient(circle at top, #111a33, var(--bg)); color:var(--text); padding-bottom:90px; overflow-x: hidden; }
+        #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 90%; max-width: 350px; }
+        .toast { background: rgba(20, 20, 30, 0.85); backdrop-filter: blur(15px); border: 1px solid var(--gold); padding: 15px; border-radius: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; animation: slideDown 0.4s ease; }
+        header{ display:flex; justify-content:space-between; align-items:center; padding:15px 5%; position:sticky; top:0; backdrop-filter:blur(15px); background:rgba(0,0,0,0.3); border-bottom:1px solid var(--stroke); z-index: 100; }
+        .logo{ font-weight:900; color:var(--gold); }
+        .page{ display:none; padding:20px 5%; animation:fade .3s ease; }
+        .page.active{ display:block; }
+        @keyframes fade{ from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+        .card{ background:var(--card); border:1px solid var(--stroke); border-radius:18px; padding:18px; backdrop-filter:blur(10px); margin-bottom:15px; }
+        input{ width:100%; padding:14px; border-radius:12px; border:1px solid var(--stroke); background:rgba(0,0,0,0.3); color:#fff; outline: none; }
+        button{ width:100%; padding:14px; border:none; border-radius:14px; background:linear-gradient(135deg,var(--gold),#ffdd66); font-weight:900; cursor:pointer; }
+        nav{ position:fixed; bottom:0; width:100%; display:flex; background:rgba(10,10,20,0.6); backdrop-filter:blur(18px); border-top:1px solid rgba(255,255,255,0.08); padding:8px 0; z-index: 100; }
+        .nav{ flex:1; text-align:center; color:#888; font-size:11px; cursor:pointer; transition:.3s; }
+        .nav i{ display:block; font-size:18px; margin-bottom:3px; }
+        .nav.active{ color:#f3ba2f; }
+        /* --- إضافة تنسيق الإشعارات --- */
+        #notif-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: none; justify-content: center; align-items: center; }
+        .notif-content { width: 90%; max-width: 400px; background: #111; border-radius: 20px; padding: 20px; }
+    </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<header>
+    <div class="logo">SHIB PROFIT</div>
+    <div class="notif-btn" onclick="openNotif()">
+        <i class="fas fa-bell" style="color:var(--gold)"></i>
+    </div>
+</header>
+
+<div id="home" class="page active">
+    <div class="card" style="background: linear-gradient(135deg, rgba(243,186,47,0.1) 0%, rgba(7,10,18,1) 100%);">
+        <h4 style="color:#888;">إجمالي الرصيد</h4>
+        <div id="p_balance" style="font-size:32px; font-weight:900; margin:10px 0;">0.00</div>
+        <div style="font-size:13px; color:#00ff88;">SHIB ✅</div>
+    </div>
+
+    <div class="card">
+        <h3>مراقبة السوق</h3>
+        <div style="display:flex; justify-content:space-between; margin-top:10px;">
+            <span>SHIB/USDT</span>
+            <span class="price-up">0.0000274</span>
+        </div>
+    </div>
+</div>
+
+<div id="tasks" class="page">
+    <div class="card">
+        <h2>مركز المهام</h2>
+        <p>أكمل المهام لزيادة رصيدك</p>
+    </div>
+
+    <div class="card" id="task_1">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div><b>متابعة القناة الأولى</b><br><small style="color:var(--gold);">+250 SHIB</small></div>
+            <button onclick="doTask('https://t.me/RR99PP', 'task_1', 250)" style="width:100px;">إكمال</button>
+        </div>
+    </div>
+</div>
+
+<div id="withdraw" class="page">
+    <div class="card">
+        <h3>سحب الأرباح</h3>
+        <input id="w_address" placeholder="عنوان محفظة BEP20" style="margin-bottom:10px;">
+        <input type="number" id="w_amount" placeholder="المبلغ بالـ SHIB" style="margin-bottom:15px;">
+        <button onclick="requestWithdraw()">تأكيد السحب</button>
+    </div>
+    <div class="card">
+        <h4>السجلات</h4>
+        <div id="w_logs" style="font-size:12px; color:#888; text-align:center;">لا توجد سحوبات</div>
+    </div>
+</div>
+
+<div id="profile" class="page">
+    <div class="card" style="text-align:center;">
+        <div id="avatar_box" style="width:80px; height:80px; border-radius:50%; background:var(--gold); margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:30px; color:#000;"></div>
+        <h2 id="p_name">تحميل...</h2>
+        <small id="p_id" style="color:#666;"></small>
+    </div>
+</div>
+
+<nav>
+    <div class="nav active" onclick="go('home',this)"><i class="fas fa-home"></i>الرئيسية</div>
+    <div class="nav" onclick="go('tasks',this)"><i class="fas fa-tasks"></i>المهام</div>
+    <div class="nav" onclick="go('withdraw',this)"><i class="fas fa-wallet"></i>السحب</div>
+    <div class="nav" onclick="go('profile',this)"><i class="fas fa-user"></i>الملف</div>
+</nav>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // --- الربط مع السيرفر (app.py) ---
+    async function apiCall(endpoint, method = 'GET', body = null) {
+        const options = {
+            method,
+            headers: { 'Content-Type': 'application/json' }
+        };
+        if (body) options.body = JSON.stringify(body);
+        
+        try {
+            const res = await fetch(endpoint, options);
+            return await res.json();
+        } catch (e) {
+            console.error("Connection Error");
+            return { success: false };
+        }
+    }
+
+    // 1. الدخول التلقائي
+    async function init() {
+        const user = tg.initDataUnsafe?.user;
+        if (user) {
+            // تحديث بيانات الملف الشخصي في الواجهة
+            document.getElementById('p_name').innerText = user.first_name;
+            document.getElementById('p_id').innerText = "ID: " + user.id;
+            document.getElementById('avatar_box').innerText = user.first_name.charAt(0);
+
+            // تسجيل الدخول في السيرفر وجلب الرصيد
+            const data = await apiCall('/api/auth', 'POST', { user_id: user.id, name: user.first_name });
+            if (data.success) {
+                document.getElementById('p_balance').innerText = data.balance.toLocaleString();
+            }
+        }
+    }
+
+    // 2. تنفيذ مهمة
+    async function doTask(link, taskId, reward) {
+        window.open(link, '_blank');
+        notify("جاري التحقق من المهمة...", "fa-spinner fa-spin");
+        
+        setTimeout(async () => {
+            const data = await apiCall('/api/complete-task', 'POST', { reward: reward });
+            if (data.success) {
+                document.getElementById('p_balance').innerText = data.new_balance.toLocaleString();
+                document.getElementById(taskId).style.display = 'none'; // إخفاء المهمة بعد الحل
+                notify(`مبروك! أضيفت ${reward} رصيد`, "fa-check-circle");
+            }
+        }, 5000);
+    }
+
+    // 3. طلب سحب
+    async function requestWithdraw() {
+        const addr = document.getElementById('w_address').value;
+        const amt = document.getElementById('w_amount').value;
+        
+        if(!addr || !amt) return notify("أكمل البيانات", "fa-times");
+
+        const data = await apiCall('/api/withdraw', 'POST', { amount: amt, method: 'BEP20', details: addr });
+        if (data.success) {
+            notify("تم إرسال الطلب للأدمن ✅", "fa-check");
+            document.getElementById('p_balance').innerText = data.new_balance.toLocaleString();
+            document.getElementById('w_logs').innerText = "لديك طلب قيد المراجعة...";
+        } else {
+            notify(data.message || "خطأ في السحب", "fa-times");
+        }
+    }
+
+    // وظائف التنقل
+    function go(id, el) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav').forEach(n => n.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        el.classList.add('active');
+    }
+
+    function notify(msg, icon) {
+        const container = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.innerHTML = `<i class="fas ${icon}" style="color:var(--gold)"></i> ${msg}`;
+        container.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
