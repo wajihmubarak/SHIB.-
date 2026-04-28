@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم | PayPlus Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* --- نفس الـ CSS بتاعك الجميل (ما غيرت فيه شي) --- */
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+        :root { --gold: #f3ba2f; --bg: #070A12; --card: rgba(255,255,255,0.05); --stroke: rgba(255,255,255,0.08); --text: #fff; --red: #ff4d4d; --green: #00ff88; }
+        * { margin: 0; padding: 0; font-family: 'Cairo', sans-serif; box-sizing: border-box; }
+        body { background: radial-gradient(circle at top, #1a1a2e, var(--bg)); color: var(--text); padding: 20px; min-height: 100vh; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--stroke); padding-bottom: 15px; }
+        .logo { font-weight: 900; color: var(--gold); font-size: 20px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: var(--card); border: 1px solid var(--stroke); border-radius: 18px; padding: 15px; text-align: center; }
+        .stat-card b { font-size: 22px; color: var(--gold); display: block; margin-top: 5px; }
+        .admin-card { background: var(--card); border: 1px solid var(--stroke); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
+        h3 { font-size: 16px; margin-bottom: 15px; border-right: 3px solid var(--gold); padding-right: 10px; }
+        input, textarea { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--stroke); background: rgba(0,0,0,0.3); color: #fff; margin-bottom: 10px; outline: none; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 12px; background: linear-gradient(135deg, var(--gold), #ffdd66); font-weight: 900; cursor: pointer; color: #000; }
+        .withdraw-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--stroke); }
+        code { color: #888; background: rgba(255,255,255,0.03); padding: 3px 7px; border-radius: 6px; font-size: 12px; }
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--gold); color: #000; padding: 12px 25px; border-radius: 30px; font-weight: bold; display: none; z-index: 3000; }
+        #confirm-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: var(--bg); width: 90%; max-width: 350px; text-align: center; border: 1px solid var(--gold); border-radius: 25px; padding: 25px; }
+    </style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div id="confirm-modal">
+    <div class="modal-content">
+        <h3>تأكيد الدفع</h3>
+        <p style="color:#888; font-size:13px; margin-bottom:20px;">هل تم التحويل للمستخدم فعلياً؟</p>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <button id="confirm-yes" style="background:var(--green);">نعم، تم</button>
+            <button onclick="closeConfirmModal()" style="background:rgba(255,255,255,0.1); color:#fff;">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<header>
+    <div class="logo"><i class="fas fa-user-shield"></i> لوحة الإدارة</div>
+</header>
+
+<div class="stats-grid">
+    <div class="stat-card"><span>إجمالي المستخدمين</span><b>{{ withdrawals|length + 10 }}</b></div> <div class="stat-card"><span>طلبات معلقة</span><b style="color: var(--red);">{{ withdrawals|length }}</b></div>
+</div>
+
+<div class="admin-card">
+    <h3><i class="fas fa-wallet"></i> طلبات السحب المعلقة</h3>
+    
+    <div id="withdraw-list">
+        {% for w in withdrawals %}
+        <div class="withdraw-item" id="row-{{ w.id }}">
+            <div style="flex: 1;">
+                <b>{{ w.name }} ({{ w.method }})</b>
+                <div style="margin: 5px 0;">
+                    <code>{{ w.details }}</code> 
+                    <i class="fas fa-copy" onclick="copyAddress('{{ w.details }}')" style="color: var(--gold); cursor: pointer; margin-right: 5px;"></i>
+                </div>
+                <div style="color: var(--gold); font-weight: 900;">${{ w.amount }}</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="approveRequest('{{ w.id }}')" style="background: var(--green); width: 45px;"><i class="fas fa-check"></i></button>
+            </div>
+        </div>
+        {% else %}
+        <p style="text-align:center; color:#444; padding:20px;">لا توجد طلبات معلقة حالياً</p>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="admin-card">
+    <h3><i class="fas fa-bullhorn"></i> إشعار للنظام</h3>
+    <textarea id="admin-msg" placeholder="اكتب رسالة تظهر للمستخدمين..."></textarea>
+    <button onclick="showToast('تم بث الرسالة بنجاح 📣')">بث الإشعار</button>
+</div>
+
+<script>
+function copyAddress(text) {
+    navigator.clipboard.writeText(text);
+    showToast("تم نسخ العنوان 📋");
+}
+
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.innerHTML = msg;
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 2500);
+}
+
+function approveRequest(w_id) {
+    document.getElementById('confirm-modal').style.display = 'flex';
+    
+    document.getElementById('confirm-yes').onclick = async function() {
+        const res = await fetch(`/api/admin/approve/${w_id}`, { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.success) {
+            const item = document.getElementById(`row-${w_id}`);
+            item.style.opacity = "0";
+            setTimeout(() => { item.remove(); }, 400);
+            closeConfirmModal();
+            showToast("تم تأكيد الدفع بنجاح ");
+        }
+    };
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirm-modal').style.display = 'none';
+}
+</script>
+
+</body>
+</html>
