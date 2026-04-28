@@ -41,6 +41,7 @@ def index():
 @app.route('/admin')
 def admin():
     with get_db() as conn:
+        # جلب طلبات السحب المعلقة
         withdrawals = conn.execute('''
             SELECT withdrawals.*, users.name 
             FROM withdrawals 
@@ -48,7 +49,11 @@ def admin():
             WHERE withdrawals.status = 'قيد المراجعة'
             ORDER BY date DESC
         ''').fetchall()
-    return render_template('admin.html', withdrawals=withdrawals)
+        
+        # جلب العدد الحقيقي للمستخدمين
+        user_count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+        
+    return render_template('admin.html', withdrawals=withdrawals, user_count=user_count)
 
 # --- 3. الأوامر البرمجية (API) ---
 
