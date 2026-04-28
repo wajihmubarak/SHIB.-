@@ -76,19 +76,45 @@ def auth():
 
 # إكمال مهمة وزيادة رصيد
 @app.route('/api/complete-task', methods=['POST'])
-def complete_task():
-    if 'user_id' not in session:
-        return jsonify({"success": False, "message": "غير مسجل"})
-    
-    data = request.json
-    reward = float(data.get('reward'))
-    uid = session['user_id']
-    
+# --- تعديل جدول الداتابيز (إضافة جدول للمهام المكتملة) ---
+def init_db():
     with get_db() as conn:
+        conn.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, tg_id TEXT UNIQUE, name TEXT, balance REAL DEFAULT 0)')
+        conn.execute('CREATE TABLE IF NOT EXISTS withdrawals (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, method TEXT, amount REAL, status TEXT, details TEXT, date TIMESTAMP DEFAULT (DATETIME("now")))')
+        # الجدول الجديد
+        conn.execute('CREATE TABLE IF NOT EXISTS completed_tasks (user_id INTEGER, task_id TEXT, UNIQUE(user_id, task_id))')
+        conn.commit()
+
+# --- تعديل دالة إكمال المهمة ---
+@app.route('/api/complete-task', methods=['POST'])
+def complete_task():
+    if 'user_id' not in session: return jsonify({"success": False, "message": "سجل دخول أولاً"})
+    
+    uid = session['user_id']
+    task_id = request.json.get('task_id') # لازم نرسل ID المهمة
+    reward = float(request.json.get('reward'))
+
+    with get_db() as conn:
+        # التأكد إذا المهمة دي عملها قبل كدة
+        check = conn.execute("SELECT * FROM completed_tasks WHERE user_id = ? AND task_id = ?", (uid, task_id)).fetchone()
+        if check:
+            return jsonify({"success": False, "message": "هذه المهمة مكتملة بالفعل"})
+
+        # إضافة المهمة للسجل وتحديث الرصيد
+        conn.execute("INSERT INTO completed_tasks (user_id, task_id) VALUES (?, ?)", (uid, task_id))
         conn.execute("UPDATE users SET balance = balance + ? WHERE id = ?", (reward, uid))
         conn.commit()
-        updated = conn.execute("SELECT balance FROM users WHERE id = ?", (uid,)).fetchone()
-        return jsonify({"success": True, "new_balance": updated['balance']})
+        
+        new_balance = conn.execute("SELECT balance FROM users WHERE id = ?", (uid,)).fetchone()[0]
+        return jsonify({"success": True, "new_balance": new_balance})
+
+# --- دالة جديدة لجلب المهام المكتملة للمستخدم ---
+@app.route('/api/user-tasks')
+def get_user_tasks():
+    if 'user_id' not in session: return jsonify([])
+    with get_db() as conn:
+        tasks = conn.execute("SELECT task_id FROM completed_tasks WHERE user_id = ?", (session['user_id'],)).fetchall()
+    return jsonify([t['task_id'] for t in tasks])
 
 # طلب سحب جديد
 @app.route('/api/withdraw', methods=['POST'])
