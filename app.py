@@ -21,7 +21,7 @@ def init_db():
              name TEXT, 
              balance REAL DEFAULT 0)''')
         
-        # جدول السحوبات
+        # جدول السحوبات (تم تصحيح خطأ التاريخ هنا)
         conn.execute('''CREATE TABLE IF NOT EXISTS withdrawals 
             (id INTEGER PRIMARY KEY AUTOINCREMENT, 
              user_id INTEGER, 
@@ -29,8 +29,13 @@ def init_db():
              amount REAL, 
              status TEXT, 
              details TEXT, 
-             date TIMESTAMP DEFAULT (DATETIME('now', 'localtime')))''')
+             date TEXT DEFAULT CURRENT_TIMESTAMP)''') # استخدمنا CURRENT_TIMESTAMP بدل DATETIME('now')
+        
+        # جدول المهام المكتملة
+        conn.execute('''CREATE TABLE IF NOT EXISTS completed_tasks 
+            (user_id INTEGER, task_id TEXT, UNIQUE(user_id, task_id))''')
         conn.commit()
+
 
 # --- 2. مسارات الصفحات ---
 
