@@ -226,6 +226,31 @@ async function completeTask(taskId, reward) {
         showToast(data.message);
     }
 }
+async function loadWithdrawalLogs() {
+    const res = await fetch('/api/user-withdrawals');
+    const logs = await res.json();
+    const logsContainer = document.getElementById('w_logs');
+
+    if (logs.length > 0) {
+        logsContainer.innerHTML = ''; // مسح الرسالة القديمة
+        logs.forEach(log => {
+            const statusColor = log.status.includes('تم الدفع') ? '#00ff88' : 'var(--gold)';
+            logsContainer.innerHTML += `
+                <div class="coin-item" style="border-bottom: 1px solid var(--stroke); padding: 12px 0;">
+                    <div>
+                        <div style="font-size:14px; font-weight:bold;">سحب ${log.method}</div>
+                        <small style="color:${statusColor};">${log.status}</small>
+                        <br><small style="font-size:9px; color:#555;">${log.date}</small>
+                    </div>
+                    <div style="text-align:left;"><b>$${log.amount.toFixed(2)}</b></div>
+                </div>
+            `;
+        });
+    }
+}
+
+// تأكد من استدعاء الدالة عند فتح صفحة السحب
+// أو أضفها في الـ window.onload
    
 </script>
 </body>
